@@ -1,0 +1,20 @@
+---
+title: "Functional Programming"
+author: "Ryan Harrington"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Week 8 - Functional Programming
+As our analyses advance, we will frequently find situations where we need to write the same code multiple times. This can cause our code to be error prone. Functional programming allows us to create more concise code through iteration. Topics covered will include:
+
+* The relationship between loops and functional programming
+* Vectorizing code
+* The map paradigm
+
+# Reviewing loops
+
+## `for`

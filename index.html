@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Foundations of R</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Ryan Harrington" />
+    <meta name="date" content="2021-11-08" />
+    <script src="index_files/header-attrs/header-attrs.js"></script>
+    <script src="index_files/mark.js/mark.min.js"></script>
+    <link href="index_files/xaringanExtra-search/search.css" rel="stylesheet" />
+    <script src="index_files/xaringanExtra-search/search.js"></script>
+    <script>window.addEventListener('load', function() { window.xeSearch = new RemarkSearch({"position":"bottom-left","caseSensitive":false,"showIcon":true,"autoSearch":true}) })</script>
+    <script src="index_files/clipboard/clipboard.min.js"></script>
+    <link href="index_files/xaringanExtra-clipboard/xaringanExtra-clipboard.css" rel="stylesheet" />
+    <script src="index_files/xaringanExtra-clipboard/xaringanExtra-clipboard.js"></script>
+    <script>window.xaringanExtraClipboard(null, {"button":"<i class=\"fa fa-clipboard\"><\/i>","success":"<i class=\"fa fa-check\" style=\"color: #90BE6D\"><\/i>","error":"Press Ctrl+C to Copy"})</script>
+    <link href="index_files/font-awesome/css/all.css" rel="stylesheet" />
+    <link href="index_files/font-awesome/css/v4-shims.css" rel="stylesheet" />
+    <link href="index_files/tile-view/tile-view.css" rel="stylesheet" />
+    <script src="index_files/tile-view/tile-view.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+    <link rel="stylesheet" href="custom.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class: animated, fadeIn, content-slide
+layout: true
+
+---
+
+class: title-slide, middle
+layout: false
+
+# Foundations of R for Data Analysis
+
+### Week 08: Functional Programming
+
+Ryan Harrington&lt;br&gt;
+November 15, 2021&lt;br&gt;
+University of Delaware&lt;br&gt;
+College of Professional &amp; Continuing Studies
+
+---
+
+class: content-slide
+
+# Questions We'll Answer Today
+
+### 🍼 What are some trends in DE childcare facilities?&lt;br&gt;
+### 🧵 How do I use loops to iterate?&lt;br&gt;
+### 🗺 How do use maps to iterate?&lt;br&gt;
+### 🔮 Where do we go from here?&lt;br&gt;
+
+Create a new repository on GitHub and your local machine for your work from today's lesson.
+
+---
+
+class: content-slide
+
+# Review of Week 6 Assignment
+
+---
+
+class: content-slide
+
+# Licensed Child Care Providers and Facilities
+
+Delaware utilizes an open data portal to share data in a consistent format with the public. The portal was originally built in 2016 based upon an Executive Order from Gov. Jack Markell. In 2019, Gov. Carney extended what data could be put onto the portal. The portal was built by a company called Socrata (since acquired by Tyler Technologies).
+
+One of the available datasets is Licensed Child Care Providers and Facilities. We'll be exploring this dataset today.
+
+---
+
+class: content-slide
+
+# RSocrata
+
+We can access the data in multiple ways. One way, though is directly through its API. We'll utilize the `RSocrata` package for this work.
+
+
+```r
+install.packages("RSocrata")
+library(RSocrata)
+```
+
+You can then use the `read.socrata` function to read the data from the API endpoint. You can obtain an API key to speed up the data ingestion (useful for larger datasets), but that is not required.
+
+
+```r
+childcare &lt;- read.socrata("https://data.delaware.gov/resource/iuzd-3dbt.csv")
+```
+
+---
+
+class: content-slide
+
+# Exploring childcare data
+
+Consider how we would typically go through the data exploration process. After importing the dataset, we would:
+
+* Seek to understand the structure of the dataset (`glimpse`)
+* Create a summary of the dataset (`summary`)
+* Explore univariate distributions by creating histograms of continuous fields and bar charts of categorical fields
+* Begin to explore bivariate relationships by creating scatterplots and finding correlations
+
+The challenge with the last couple of steps is that they can be quite time consuming and tedious. We can minimize our code by using functions, thereby reducing the risk of errors, but we might still be left copying our code snippets over and over again.
+
+What if we didn't have to do that?
+
+---
+
+class: content-slide
+
+# R is vectorized
+
+Recall that R is a vectorized language, which means that we can do things like this:
+
+
+```r
+top_ten &lt;- 1:10
+top_ten - 8
+top_ten ^ 2
+```
+
+What if we have a few vectors...
+
+
+```r
+top_ten &lt;- 1:10
+top_ten_reversed &lt;- 10:1
+lost_numbers &lt;- c(4, 8, 15, 16, 23, 42)
+jennys_number &lt;- c(8, 6, 7, 5, 3, 0, 9)
+transcendental_numbers &lt;- c(pi, 1.618, 2 * pi, 2.718)
+```
+
+...and we want to find the median of each?
+
+---
+
+class: content-slide
+
+# Same function, many objects
+
+Writing out each certainly works, but it breaks our rule of thumb from last week. If you have to write something three times, then generalize it.
+
+
+```r
+median(top_ten)
+median(top_ten_reversed)
+median(lost_numbers)
+median(jennys_number)
+median(transcendental_numbers)
+```
+
+This gives one answer as opposed to five:
+
+
+```r
+median(top_ten, top_ten_reversed, lost_numbers, jennys_number, transcendental_numbers)
+```
+
+And it doesn't work when we supply it with a list:
+
+
+```r
+median(list(top_ten, top_ten_reversed, lost_numbers, jennys_number, transcendental_numbers))
+```
+
+---
+
+class: content-slide
+
+# Writing loops
+
+We need a way to interact with each of these elements - to iterate over them. Loops are one approach to this challenge.
+
+We'll be talking about two types of loops:
+
+* `for` `each` loops
+* `while` loops
+
+Both have roughly the same syntax:
+
+
+```r
+&lt;type of loop&gt; {
+  
+  body
+  
+}
+```
+
+
+`for` loops allow you to iterate over something. That could be the items in a list, the columns in a dataframe, or something else.
+
+---
+
+class: content-slide
+
+# `for` loops
+
+Let's make the simplest loop we can. Note the syntax:
+
+
+```r
+for (i in 1:10) {
+  
+  print(i)
+  
+}
+```
+
+The `for` operator iterates over each element that we provide it. In this case, that is every integer in the vector from 1 to 10. As the iteration occurs, the value is stored into the object `i`. This integer is then printed each iteration through the loop. Once all items in the vector have been dealt with, the loop ends.
+
+---
+
+class: content-slide
+
+# `for` loops
+
+Consider our original use case. We wanted to calculate the median of each of several vectors. We can use a list to do this.
+
+
+```r
+sample_list &lt;- list(top_ten = top_ten, 
+                    top_ten_reversed = top_ten_reversed, 
+                    lost_numbers = lost_numbers, 
+                    jennys_number = jennys_number, 
+                    transcendental_numbers = transcendental_numbers)
+```
+
+In the first approach we iterate over each element in the list by its index number. You will commonly see something like `1:length(sample_list)` in code as a way to do this.
+
+
+```r
+for (i in 1:length(sample_list)) {
+  
+  list_median &lt;- median(sample_list[[i]])
+  
+  print(list_median)
+  
+}
+```
+
+---
+
+class: content-slide
+
+# `for` loops
+
+Another approach is to extract the `name` of each element in the list and iterate over that instead.
+
+
+```r
+for (name in names(sample_list)) {
+  
+  list_median &lt;- median(sample_list[[name]])
+  print(list_median)
+  
+}
+```
+
+There is nothing special about `i` or `name` in the iterator. These are commonly used, but not required. The code would work just as well with any other variable name utilized there:
+
+
+```r
+for (bicycle in names(sample_list)) {
+  
+  list_median &lt;- median(sample_list[[bicycle]])
+  print(list_median)
+  
+}
+```
+
+---
+
+class: content-slide
+
+# `for` loops
+
+Recall that data frames are essentially just a special kind of list. They have a few restrictions on them that lists don't:
+
+* you can't use the same name for two different variables
+* all elements of a data frame are vectors
+* all elements of a data frame have an equal length
+
+We can apply `for` loops to data frames as well. Consider the `childcare` example. Let's extract the column type from each column using a loop:
+
+
+```r
+for (col in colnames(childcare)) {
+  
+  childcare_class &lt;- class(childcare[[col]])
+  
+  print(childcare_class)
+  
+}
+```
+
+---
+
+class: content-slide
+
+# `while` loops
+
+`for` loops rely on you knowing how many times you'll need to iterate through an object (whether it is a vector, list, data frame, or something else). What if you don't know how many times you'll need to iterate through an object?
+
+In this case, you'll want to utilize a `while` loop. A `while` loop knows to stop looping once a logical condition is met.
+
+Consider simulating a dice roll. We want to simulate rolling two dice until we end up with a matching pair.
+
+
+```r
+dice &lt;- 1:6
+current_dice &lt;- c(1, 2)
+i &lt;- 0
+
+while (current_dice[1] != current_dice[2]) {
+  
+  i &lt;- i + 1
+  
+  current_dice &lt;- sample(dice, 2, replace = T)
+  
+  sentence &lt;- paste0("This is roll number ", i, ". You rolled a ", current_dice[1], " and a ", current_dice[2], ".")
+  
+  print(sentence)
+  
+}
+```
+
+---
+
+class: content-slide
+
+# Looping vs. Mapping
+
+One of the key challenges with loops is that they can get complicated quickly. You have to do all of the work of figuring out how to build them. You also have to start to consider things like memory allocation and the most efficient way to build objects. These aren't hard problems to solve, but they do provide a certain amount of mental overhead.
+
+Another paradigm to consider is to utilize a `map` function. This is particularly valuable when you consider a `for` loop. If you can write a `for` loop, then you can utilize a `map` function instead.
+
+The key benefit of a `map` function is clarity. It removes all of the overhead of writing a `for` loop and allows you to concentrate on the work that you want to perform. In past versions of R, `map` functions were also faster than their loop equivalents, but this has been changed.
+
+---
+
+class: content-slide
+
+# `map` syntax
+
+In the tidyverse, the `purrr` package is dedicated to functions that improve functional programming, which includes `map`. In base R, the `apply` family of functions (`apply`, `sapply`, `mapply`, `vapply`) provide largely equivalent functionality. A key difference between the two is that `purrr` provides a consistent syntax between its functions whereas there are syntactical differences between the `apply` functions.
+
+Here's what the syntax for `map` functions looks like:
+
+
+```r
+map(.x, .f, ...)
+```
+
+* `.x` is a list or atomic vector
+* `.f` is a function, formula, or vector
+* `...` allows for additional arguments to be passed to the mapped function
+
+---
+
+class: content-slide
+
+# Converting loops to maps
+
+Consider how we started exploring loops: by extracting the `median` of the vectors in `sample_list`. Let's compare the code needed between writing this as a loop and writing this as a `map`.
+
+.pull-left[
+### Loop
+
+```r
+for (i in 1:length(sample_list)) {
+  
+  list_median &lt;- median(sample_list[[i]])
+  
+  print(list_median)
+  
+}
+```
+]
+.pull-right[
+### map
+
+```r
+map(sample_list, median)
+```
+]
+
+---
+
+class: content-slide
+
+# Converting loops to maps
+
+Next, compare the code needed to extract the class of every column in `childcare`.
+
+.pull-left[
+### Loop
+
+```r
+for (col in colnames(childcare)) {
+  
+  childcare_class &lt;- class(childcare[[col]])
+  
+  print(childcare_class)
+  
+}
+```
+]
+.pull-right[
+### map
+
+```r
+map(childcare, class)
+```
+]
+
+---
+
+class: content-slide
+
+# Deeper dive into syntax
+
+Our two examples are about as simple as it gets. Functions and formulas (`.f`) can get much more complex. Some slightly different syntax can be useful for those cases.
+
+All of these are equivalent:
+
+
+```r
+map(childcare, class)
+
+map(childcare, ~ class(.))
+
+map(childcare, ~ class(.x))
+
+map(childcare, ~ class(..1))
+```
+
+---
+
+class: content-slide
+
+# Deeper dive into syntax
+
+You'll note that this follows similar syntax to the `across` functions, though there are some key differences. Here's when you might want to use each of these according to the vignette:
+
+&gt; If a **function**, it is used as is.
+&gt; If a **formula**, e.g. ~ .x + 2, it is converted to a function. There are three ways to refer to the arguments:
+
+&gt; * For a single argument function, use `.`
+&gt; * For a two argument function, use `.x` and `.y`
+&gt; * For more arguments, use `..1`, `..2`, `..3` etc
+
+---
+
+class: content-slide
+
+# Mapping to types
+
+Note that every time we have utilized `map`, it returns an object as a list. This can be extremely useful, but often times there are other types that we will want to utilize. There are variants of `map` specifically designed for this use case: `map_lgl`, `map_int`, `map_dbl`, and `map_chr`.
+
+Being explicit about the type of data that you want to return is extremely valuable. In fact, it's another reason that you should utilize the `purrr::map` functions as opposed to the `base::apply` functions. The `base::apply` functions are inconsistent in how they return data. This can cause a lot of problems for you. It is much better to be able to explicitly set your type in the way that you want it.
+
+Consider mapping `childcare` to the `class` function. You may consider using `map_chr` instead so that your output is a character vector as opposed to a list:
+
+
+```r
+childcare %&gt;% 
+  map_chr(class)
+```
+
+---
+
+class: content-slide
+
+# Mapping to types
+
+Instead, you may want to get the number of distinct values in each record. For this, we can use `length(unique())` paired with `map_int`:
+
+
+```r
+childcare %&gt;% 
+  map_int(~ length(unique(.)))
+```
+
+---
+
+class: content-slide
+
+# Mapping to a dataframe
+
+Everything that we've used so far returns either a vector or a list. The most common way for us to work in R has been with a dataframe.
+
+There are two special `map_*` functions that allow this: `map_dfr` and `map_dfc`. These will row-bind and column-bind your map outputs together respectively.
+
+You'll most often need `map_dfr`. You can also utilize `map_df` - this is just an alias for `map_dfr`.
+
+
+```r
+childcare %&gt;% 
+  map_df(class)
+```
+
+---
+
+class: content-slide
+
+# Mapping to a dataframe
+
+This is much more interesting when you return multiple fields at once. Let's make our own version of `glimpse` called `peek`. For each column in the dataset, this function will tell us the class of the field and the number of unique values it has. These are normally a great starting point for us when data cleaning.
+
+Start by building a function to do this:
+
+
+```r
+peek &lt;- function(field) {
+  
+  field_class &lt;- class(field)
+  
+  num_distinct &lt;- length(unique(field))
+    
+  return(data.frame(class = field_class,
+                    n_distinct = num_distinct))
+}
+```
+
+---
+
+class: content-slide
+
+# Mapping to a dataframe
+
+Now use the function as part of your `map_df`:
+
+
+```r
+childcare %&gt;% 
+  map_df(peek)
+```
+This is great!..except that the name of the field is missing. You can fix this by adding the `.id` argument, which is specific to `map_df`:
+
+
+```r
+childcare %&gt;% 
+  map_df(peek,
+         .id = "field")
+```
+
+---
+
+class: content-slide
+
+# Cleaning the data
+
+The dataset has a few fields that should be cleaned. Among the changes that should be made:
+
+* Fixing the `site_opens_at` and `site_closes_at` fields such that they are datetime fields
+* Converting the `financial_arrangements` field such that it is one-hot encoded
+* Fix the `geocoded_location` so that it can be utilized for mapping (as in a *map* map)
+
+We'll utilize a separate cleaning script to make that possible.
+
+
+```r
+source(here::here("clean_childcare.R"))
+```
+
+---
+
+class: content-slide
+
+# Creating many histograms
+
+A common task when we begin to do exploratory data analysis is to generate histograms of every appropriate field. Understanding distributions can be very helpful in diagnosing how to approach the data. The challenge is that this can be tedious to do. Utilizing `map` provides a solution for this task.
+
+First - identify the fields that you want to build a histogram for. We'll extract any field that has a class similar to a numeric:
+
+
+```r
+field_nums &lt;- 
+  childcare_clean %&gt;% 
+  map_df(peek,
+         .id = "field") %&gt;% 
+  filter(class %in% c("POSIXct", "numeric", "integer")) %&gt;% 
+  pull(field)
+```
+
+Start by creating a solution that works for one field, then generalize it to apply to all of them. Let's start by looking at `site_opens_at`:
+
+
+```r
+childcare_clean %&gt;% 
+  ggplot(aes(x = site_opens_at)) +
+  geom_histogram()
+```
+
+---
+
+class: content-slide
+
+# Creating many histograms
+
+You can start to make your code more generic by using `.x` as a placeholder in your code:
+
+
+```r
+.x &lt;- field_nums[2] # Let's look at `site_opens_at`
+
+childcare_clean %&gt;% 
+  ggplot(aes(x = .x)) +
+  geom_histogram()
+```
+
+Note that this fails. When we want to extract data from a dataframe with tidyverse functions in this way we need to utilize a `.data` prefix. We can then encapsulate the `.x` in `[[]]`. Overall, this looks like: `.data[[.x]]`.
+
+
+```r
+.x &lt;- field_nums[2] # Let's look at `site_opens_at`
+
+childcare_clean %&gt;% 
+  ggplot(aes(x = .data[[.x]])) +
+  geom_histogram()
+```
+
+---
+
+class: content-slide
+
+# Creating many histograms
+
+Finally, apply it to your map:
+
+
+```r
+field_nums %&gt;% 
+  map(~childcare_clean %&gt;% 
+        ggplot(aes(x = .data[[.x]])) +
+        geom_histogram()
+  )
+```
+
+Even better, build a function with this code and then apply *that* to your map:
+
+
+```r
+create_hist &lt;- function(df, .x) {
+  
+  df %&gt;% 
+    ggplot(aes(x = .data[[.x]])) +
+    geom_histogram()
+  
+}
+```
+
+
+```r
+map(field_nums, ~ create_hist(childcare_clean, .x))
+```
+
+---
+
+class: content-slide
+
+# Building many bar charts
+
+Another common task when we begin to do exploratory data analysis is to generate a bar graph of every character field. This helps us to get a sense of the data and some of the most common values for field.
+
+Let's figure out what columns we want to apply it to. I'd propose anything that has less than 75 distinct values.
+
+
+```r
+field_selected &lt;-
+  childcare_clean %&gt;% 
+  map_df(peek,
+         .id = "field") %&gt;% 
+  arrange(desc(n_distinct)) %&gt;% 
+  filter(n_distinct &lt; 75) %&gt;% 
+  pull(field)
+```
+
+This now becomes the list of columns that we intend to create a bar graph for.
+
+---
+
+class: content-slide
+
+# Building many bar charts
+
+Create a solution for one example first:
+
+
+```r
+childcare_clean %&gt;% 
+  mutate(site_zip_code = as.character(site_zip_code)) %&gt;% 
+  count(site_zip_code) %&gt;% 
+  mutate(site_zip_code = fct_reorder(site_zip_code, n)) %&gt;% 
+  ggplot(aes(x = n,
+             y = site_zip_code)) +
+  geom_col()
+```
+
+---
+
+class: content-slide
+
+# Building many bar charts
+
+Now begin to make your code generic by inserting `.data[[.x]]`:
+
+
+```r
+.x &lt;- field_selected[1] # Use site_zip_code as practice
+
+childcare_clean %&gt;% 
+  mutate(.data[[.x]] = as.character(.data[[.x]])) %&gt;% 
+  count(.data[[.x]]) %&gt;% 
+  mutate(.data[[.x]] = fct_reorder(.data[[.x]], n)) %&gt;% 
+  ggplot(aes(x = n,
+             y = .data[[.x]])) +
+  geom_col()
+```
+
+This almost works, but we need to make one more adjustment.
+
+---
+
+class: content-slide
+
+# Building many bar charts
+
+You can't include `.data` on the LHS of a tidyverse function. There are two options:
+
+1. Use some more complex metaprogramming.
+2. Use a generic name to write your data to and fix it at the end.
+
+We'll opt for the 2nd choice:
+
+
+```r
+.x &lt;- field_selected[1] # Use site_zip_code as practice
+
+childcare_clean %&gt;% 
+  mutate(field = as.character(.data[[.x]])) %&gt;% 
+  count(field) %&gt;% 
+  mutate(field = fct_reorder(field, n)) %&gt;% 
+  ggplot(aes(x = n,
+             y = field)) +
+  geom_col() +
+  labs(x = "",
+       y = "",
+       title = paste("Count of", .x))
+```
+
+---
+
+class: content-slide
+
+# Building many bar charts
+
+Now we can apply this to our `map`:
+
+
+```r
+map(field_selected,
+    ~childcare_clean %&gt;% 
+      mutate(field = as.character(.data[[.x]])) %&gt;% 
+      count(field) %&gt;% 
+      mutate(field = fct_reorder(field, n)) %&gt;% 
+      ggplot(aes(x = n,
+                 y = field)) +
+      geom_col() +
+      labs(x = "",
+           y = "",
+           title = paste("Count of", .x))
+)
+```
+
+---
+
+class: content-slide
+
+# Building many bar charts
+
+Now transform the anonymous function into a named function:
+
+
+```r
+bar_counts &lt;- function(df, .x) {
+  df %&gt;% 
+    mutate(field = as.character(.data[[.x]])) %&gt;% 
+    count(field) %&gt;% 
+    mutate(field = fct_reorder(field, n)) %&gt;% 
+    ggplot(aes(x = n,
+               y = field)) +
+    geom_col() +
+    labs(x = "",
+         y = "",
+         title = paste("Count of", .x))
+}
+```
+
+
+```r
+map(field_selected, ~bar_counts(childcare_clean, .x))
+```
+
+
+---
+
+class: content-slide
+
+# Constructing scatterplots
+
+One more common task is to build scatterplots of numeric variables compared against each other. Let's utilize the fields we selected to build our histograms for this task.
+
+We can build all of the scatterplots to compare a single variable against all other variables by following the same pattern that we used in our previous examples.
+
+
+```r
+map(field_nums,
+    ~ childcare_clean %&gt;% 
+      ggplot(aes(x = site_opens_at,
+                 y = .data[[.x]])) +
+      geom_point()
+    )
+```
+
+How do we compare all variables against all other variables, though?
+
+---
+
+class: content-slide
+
+# Constructing scatterplots
+
+For this, we need `map2`. Like `map`, this function allows us to iterative over lists in order to generate an output.
+
+While `map` uses a `.x` to indicate the appropriate field, `map2` utilizes a `.x` and `.y`.
+
+
+```r
+map2(.x = field_nums,
+     .y = field_nums,
+     ~ childcare_clean %&gt;% 
+      ggplot(aes(x = .data[[.x]],
+                 y = .data[[.y]])) +
+      geom_point())
+```
+
+This *almost* works, but it compares every field to itself!
+
+---
+
+class: content-slide
+
+# Constructing scatterplots
+
+`map2` steps through each record one by one. It does not automatically generate every combination for you. Rather, you need to supply those combinations.
+
+We can create those by utilizing `expand_grid`:
+
+
+```r
+field_combos &lt;- 
+  expand_grid(field_1 = field_nums,
+              field_2 = field_nums)
+```
+
+Now we pass each column to `map2`:
+
+
+```r
+map2(.x = field_combos$field_1,
+     .y = field_combos$field_2,
+     ~childcare_clean %&gt;% 
+       ggplot(aes(x = .data[[.x]],
+                  y = .data[[.y]])) +
+       geom_point()
+)
+```
+
+---
+
+class: content-slide
+
+# Expanding `map2`
+
+Similar to `map`, there are variants focused on different output types: `map2_lgl`, `map2_int`, etc.
+
+Further, you may also consider the `pmap` function, which is very similar to `map` and `map2`, except that it can accept an arbitrary number of vectors as inputs. In fact, `pmap` is an excellent solution for our scatterplot example. The first argument that it accepts is a list, so therefore you can pass a data frame to it.
+
+
+```r
+pmap(field_combos,
+     ~ childcare_clean %&gt;% 
+       ggplot(aes(x = .data[[..1]],
+                  y = .data[[..2]])) +
+       geom_point())
+```
+
+---
+
+class: content-slide
+
+# Making maps
+
+This dataset lends itself to making maps. There are a lot of great ways to do that, but I prefer the `leaflet` library. Sample map below:
+
+
+```r
+library(leaflet)
+```
+
+
+```r
+childcare_clean %&gt;% 
+leaflet() %&gt;% 
+  setView(-75.575, 39.15, 8) %&gt;% 
+  addProviderTiles(providers$Esri.WorldGrayCanvas,
+                   group = "Canvas") %&gt;% 
+  addCircleMarkers(lng = ~longitude,
+                   lat = ~latitude,
+                   radius = 3,
+                   stroke = F,
+                   fillColor = udel_blue)
+```
+
+
+
+---
+
+class: content-slide
+
+# Interactive graphs
+
+You can similarly make graphs that are interactive as opposed to static. The `plotly` library is a popular way to do this. In particular, there is a function in it that allows you to build a graph with `ggplot2` and then convert it into an interactive graph: `ggplotly`.
+
+
+```r
+library(plotly)
+```
+
+
+```r
+facility_start_end &lt;- 
+  childcare_clean %&gt;% 
+  ggplot(aes(x = age_range_start,
+             y = age_range_end)) +
+  geom_point()
+
+ggplotly(facility_start_end)
+```
+
+---
+
+class: content-slide
+
+# Better colors with `viridis`
+
+Selecting color palettes can be challenging. You want to make sure that your plot looks great, is easily read, is colorblind friendly, etc.
+
+The `viridis` palettes help solve this problem for you.
+
+.center[&lt;img src="images/viridis.png" alt="The viridis palettes" style="width:600px"&gt;]
+
+---
+
+class: content-slide
+
+# Better colors with `viridis`
+
+
+```r
+facility_start_end &lt;- 
+  childcare_clean %&gt;% 
+  ggplot(aes(x = age_range_start,
+             y = age_range_end,
+             color = site_county)) +
+  scale_color_viridis_d() +
+  geom_point()
+
+ggplotly(facility_start_end)
+```
+
+---
+
+class: content-slide
+
+# Easy chunk outputs
+
+Oftentimes you'll get stuck with this pattern:
+
+
+```r
+# Create the object
+this_is_a_new_object &lt;- c(3, 1, 4, 1, 5, 9, 2, 6, 5)
+
+# Make it visible in the output of the chunk
+this_is_a_new_object
+```
+
+
+You can include the output in your markdown file by simply surrounding it with `()`. For example:
+
+
+```r
+# Wrap in () to also create the output of the chunk
+(yet_another_object &lt;- c(2, 1, 7, 1, 8, 2, 8))
+```
+
+---
+
+class: content-slide
+
+# What should you learn next?
+
+Practice with the skills you've learned in this class. Start building a portfolio of projects. Your best bet is to identify projects that you are interested in and allow you to practice your R skill set.
+
+As you build this skillset, you may want to consider some of the following pathways:
+
+* Learn how to build interactive dashboards with [R Shiny](https://shiny.rstudio.com/)
+* Learn about modeling by exploring [tidymodels](https://www.tidymodels.org/)
+
+---
+
+class: content-slide
+
+# Staying in touch
+
+If you ever run into questions about R, want to talk through a career in data analytics or data science, or anything else, then here's how you can find me:
+
+* [LinkedIn](https://www.linkedin.com/in/ryanmharrington/)
+* [Personal Email](mailto:rmharrington31@gmail.com)
+* [UD Email](mailto:ryanh@udel.edu)
+
+---
+
+class: title-slide, middle
+layout: false
+
+# Foundations of R for Data Analysis
+
+### Week 08: Functional Programming
+
+Ryan Harrington&lt;br&gt;
+November 15, 2021&lt;br&gt;
+University of Delaware&lt;br&gt;
+College of Professional &amp; Continuing Studies
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"slideNumberFormat": "%current%/%total%",
+"highlightStyle": "github",
+"highlightLines": true,
+"ratio": "16:9",
+"countIncrementalSlides": true
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
